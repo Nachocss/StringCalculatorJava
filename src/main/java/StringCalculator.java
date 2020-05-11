@@ -10,7 +10,8 @@ public class StringCalculator {
         if (input.isEmpty()) {
             return "0";
         }
-        input = setSeparators(input);
+        setSeparators(input);
+        input = cleanInput(input);
         boolean endsInSeparator = input.substring(input.length()-1).matches(separators);
         if(endsInSeparator) {
             return "Number expected but EOF found.";
@@ -23,26 +24,20 @@ public class StringCalculator {
         return sumHasDecimals ? String.valueOf(sum) : String.valueOf((int) sum);
     }
 
-    /**
-     * @param input text to be added
-     * @return input text without the introduced delimiter expression
-     */
-    private String setSeparators(String input) {
+    private void setSeparators(String input) {
         boolean hasCustomSeparators = input.matches("//(.|\n)*\n(.)*");
         if (hasCustomSeparators) {
             separators = input.substring(input.indexOf("//")+2, input.indexOf("\n"));
             if (separators.equals("|")) separators = "\\|";
-            input = input.substring(input.indexOf("\n")+1);
         } else {
             separators = defaultSeparators;
         }
-        return input;
     }
 
-    private String cleanInput(String input) {
+    private String cleanInput(String text) {
         if (!separators.equals(defaultSeparators)) {
-            return input.substring(input.indexOf("\n")+1);
+            return text.substring(text.indexOf("\n")+1);
         }
-        return input;
+        return text;
     }
 }
