@@ -1,4 +1,7 @@
 import java.util.Arrays;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.DoubleStream;
 
 public class StringCalculator {
@@ -12,9 +15,15 @@ public class StringCalculator {
         }
         setSeparators(input);
         input = cleanInput(input);
-        boolean endsInSeparator = input.substring(input.length()-1).matches(separators);
-        if(endsInSeparator) {
+        if(endsInSeparator(input)) {
             return "Number expected but EOF found.";
+        }
+        Optional<Integer> indexOfUnexpectedSeparator = findUnexpectedSeparators(input);
+        if (indexOfUnexpectedSeparator.isPresent()) {
+            return String.format("'%s' expected but '%s' found at position %d.",
+                    separators.replace("[","").replace("]",""),
+                    input.charAt(indexOfUnexpectedSeparator.get()),
+                    indexOfUnexpectedSeparator.get());
         }
 
         double[] nums = Arrays.stream(input.split(separators))
@@ -28,7 +37,6 @@ public class StringCalculator {
         boolean hasCustomSeparators = input.matches("//(.|\n)*\n(.)*");
         if (hasCustomSeparators) {
             separators = input.substring(input.indexOf("//")+2, input.indexOf("\n"));
-            if (separators.equals("|")) separators = "\\|";
         } else {
             separators = defaultSeparators;
         }
@@ -39,5 +47,18 @@ public class StringCalculator {
             return text.substring(text.indexOf("\n")+1);
         }
         return text;
+    }
+
+    private boolean endsInSeparator(String input) {
+        return input.substring(input.length()-1).matches(separators);
+    }
+
+    private Optional<Integer> findUnexpectedSeparators(String input) {
+        Matcher matcher = Pattern.compile("[^[.]0-9"+ separators + "]").matcher(input);
+        if (matcher.find()) {
+            int index = matcher.start();
+            return Optional.of(index);
+        }
+        return Optional.empty();
     }
 }

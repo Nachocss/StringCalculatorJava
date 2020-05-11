@@ -8,7 +8,7 @@ public class StringCalculatorShould {
     StringCalculator calculator;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         calculator = new StringCalculator();
     }
 
@@ -50,9 +50,10 @@ public class StringCalculatorShould {
         assertThat(calculator.add("//;\n1;2;")).isEqualTo("Number expected but EOF found.");
         assertThat(calculator.add("//;\n2;3;4")).isEqualTo("9");
         assertThat(calculator.add("//x\n2x3x4")).isEqualTo("9");
-        assertThat(calculator.add("//|\n2|3|4")).isEqualTo("9");
-        assertThat(calculator.add("//\\|\n22|33|44")).isEqualTo("99");
-        assertThat(calculator.add("//|\n22|33|44")).isEqualTo("99");
         assertThat(calculator.add("//sep\n2sep3")).isEqualTo("5");
+        assertThat(calculator.add("//\\|\n22|33|44")).isEqualTo("99");
+        assertThat(calculator.add("//\\|\n2|3.5")).isEqualTo("5.5");
+        assertThat(calculator.add("//\\|\n1|2,3")).isEqualTo("'\\|' expected but ',' found at position 3.");
+        assertThat(calculator.add("1,2;3")).isEqualTo("',\n' expected but ';' found at position 3.");
     }
 }
