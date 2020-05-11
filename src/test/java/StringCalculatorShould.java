@@ -1,15 +1,58 @@
-import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class StringCalculatorShould {
 
+    StringCalculator calculator;
+
     @Before
     public void setUp() throws Exception {
+        calculator = new StringCalculator();
     }
 
-    @After
-    public void tearDown() throws Exception {
+    @Test
+    public void return_zero_when_parameter_is_empty_string() {
+        assertThat(calculator.add("")).isEqualTo("0");
+    }
+
+    @Test
+    public void return_its_value_when_string_is_a_single_number() {
+        assertThat(calculator.add("1")).isEqualTo("1");
+    }
+
+    @Test
+    public void return_its_sum_when_string_is_several_numbers() {
+        assertThat(calculator.add("1,1")).isEqualTo("2");
+        assertThat(calculator.add("1.2,1")).isEqualTo("2.2");
+        assertThat(calculator.add("1,1,3.3")).isEqualTo("5.3");
+    }
+
+    @Test
+    public void allow_newlines_as_separator() {
+        assertThat(calculator.add("1\n1")).isEqualTo("2");
+        assertThat(calculator.add("1\n1,6")).isEqualTo("8");
+        assertThat(calculator.add("1\n1,6\n34\n1.1,1")).isEqualTo("44.1");
+    }
+
+    @Test
+    public void not_allow_input_ending_in_separator() {
+        assertThat(calculator.add("1,1,")).isEqualTo("Number expected but EOF found.");
+        assertThat(calculator.add("1,1\n")).isEqualTo("Number expected but EOF found.");
+        assertThat(calculator.add("1\n1\n")).isEqualTo("Number expected but EOF found.");
+        assertThat(calculator.add("1\n1,")).isEqualTo("Number expected but EOF found.");
+    }
+
+    @Test
+    public void allow_custom_separators() {
+        assertThat(calculator.add("//;\n1;2")).isEqualTo("3");
+        assertThat(calculator.add("//;\n1;2;")).isEqualTo("Number expected but EOF found.");
+        assertThat(calculator.add("//;\n2;3;4")).isEqualTo("9");
+        assertThat(calculator.add("//x\n2x3x4")).isEqualTo("9");
+        assertThat(calculator.add("//|\n2|3|4")).isEqualTo("9");
+        assertThat(calculator.add("//\\|\n22|33|44")).isEqualTo("99");
+        assertThat(calculator.add("//|\n22|33|44")).isEqualTo("99");
+        assertThat(calculator.add("//sep\n2sep3")).isEqualTo("5");
     }
 }
