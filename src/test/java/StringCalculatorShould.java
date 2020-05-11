@@ -1,4 +1,5 @@
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,4 +57,11 @@ public class StringCalculatorShould {
         assertThat(calculator.add("//\\|\n1|2,3")).isEqualTo("'\\|' expected but ',' found at position 3.");
         assertThat(calculator.add("1,2;3")).isEqualTo("',\n' expected but ';' found at position 3.");
     }
+
+    @Test
+    public void not_allow_negative_numbers() {
+        assertThat(calculator.add("-1,2")).isEqualTo("Negative not allowed : -1");
+        assertThat(calculator.add("2,-4,-5")).isEqualTo("Negative not allowed : -4, -5");
+    }
+
 }
