@@ -68,5 +68,27 @@ public class StringCalculatorShould {
     public void show_several_errors() {
        assertThat(calculator.add("-1,,2")).isEqualTo("Negative not allowed : -1\nNumber expected but ',' found at position 3.");
        assertThat(calculator.add("-1\n,2")).isEqualTo("Negative not allowed : -1\nNumber expected but ',' found at position 3.");
+       assertThat(calculator.add("1\n,2,-2")).isEqualTo("Number expected but ',' found at position 2.\nNegative not allowed : -2");
+    }
+
+    @Test
+    public void support_multiplications() {
+        assertThat(calculator.multiply("2,2")).isEqualTo("4");
+        assertThat(calculator.multiply("2,4")).isEqualTo("8");
+        assertThat(calculator.multiply("2\n2")).isEqualTo("4");
+        assertThat(calculator.multiply("//;\n10;2")).isEqualTo("20");
+        assertThat(calculator.multiply("//;\n10.6;2")).isEqualTo("21.2");
+    }
+
+    @Test
+    public void support_divisions() {
+        assertThat(calculator.divide("8,2")).isEqualTo("4");
+        assertThat(calculator.divide("8,2,2")).isEqualTo("2");
+        assertThat(calculator.divide("15.2,3")).isEqualTo("5.066666666666666");
+    }
+
+    @Test
+    public void support_subtractions() {
+        assertThat(calculator.subtract("8,2")).isEqualTo("6");
     }
 }

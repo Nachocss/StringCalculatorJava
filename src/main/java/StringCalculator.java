@@ -4,26 +4,71 @@ import java.util.regex.Pattern;
 import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
-import static java.util.Map.Entry.comparingByValue;
-
 public class StringCalculator {
 
     private String separators;
     private final String defaultSeparators = "[,\n]";
     private List<ErrorInfo> errors;
-    private double[] nums;
+    private double[] factors;
 
     public StringCalculator() {
         this.errors = new ArrayList<>();
     }
 
     public String add(String input) {
-        errors.clear();
-        if (input.isEmpty()) {
-            return "0";
+        if (input.isEmpty()) return "0";
+        performCommonOperations(input);
+        if (!errors.isEmpty()) return formatErrorOutput();
+
+        double result = DoubleStream.of(factors).sum();
+        boolean resultHasDecimals = result % 1 != 0;
+        return resultHasDecimals ? String.valueOf(result) : String.valueOf((int) result);
+    }
+
+    public String multiply(String input) {
+        if (input.isEmpty()) return "0";
+        performCommonOperations(input);
+        if (!errors.isEmpty()) return formatErrorOutput();
+
+        double result = DoubleStream.of(factors).reduce(1, (a, b) -> a * b);
+        boolean resultHasDecimals = result % 1 != 0;
+        return resultHasDecimals ? String.valueOf(result) : String.valueOf((int) result);
+    }
+
+    public String subtract(String input) {
+        if (input.isEmpty()) return "0";
+        performCommonOperations(input);
+        if (!errors.isEmpty()) return formatErrorOutput();
+
+        double result = factors[0];
+        for (int i = 1; i < factors.length; i++) {
+            result -= factors[i];
         }
+        boolean resultHasDecimals = result % 1 != 0;
+        return resultHasDecimals ? String.valueOf(result) : String.valueOf((int) result);
+    }
+
+    public String divide(String input) {
+        if (input.isEmpty()) return "0";
+        performCommonOperations(input);
+        if (!errors.isEmpty()) return formatErrorOutput();
+
+        double result = factors[0];
+        for (int i = 1; i < factors.length; i++) {
+            result /= factors[i];
+        }
+        boolean productHasDecimals = result % 1 != 0;
+        return productHasDecimals ? String.valueOf(result) : String.valueOf((int) result);
+    }
+
+    private void performCommonOperations(String input) {
         setSeparators(input);
         input = cleanInput(input);
+        setFactors(input);
+    }
+
+    private void setFactors(String input) {
+        errors.clear();
         if(endsInSeparator(input)) {
             errors.add(new ErrorInfo("Number expected but EOF found.", input.length()-1));
         }
@@ -40,20 +85,15 @@ public class StringCalculator {
 
         Stream<String> stream = Arrays.stream(input.split(regex));
         if (numberWasExpected.isPresent()) {
-            nums = stream.filter(n -> !n.equals("")).map(String::trim).mapToDouble(Double::parseDouble).toArray();
+            factors = stream.filter(n -> !n.equals("")).map(String::trim).mapToDouble(Double::parseDouble).toArray();
         } else {
-            nums = stream.map(String::trim).mapToDouble(Double::parseDouble).toArray();
+            factors = stream.map(String::trim).mapToDouble(Double::parseDouble).toArray();
         }
 
-        Optional<ErrorInfo> negativeNumbersFoundError = findNegativeNumbers(nums);
+        Optional<ErrorInfo> negativeNumbersFoundError = findNegativeNumbers(factors);
         negativeNumbersFoundError.ifPresent(error -> errors.add(error));
-
-        if (!errors.isEmpty()) return formatErrorOutput();
-
-        double sum = DoubleStream.of(nums).sum();
-        boolean sumHasDecimals = sum % 1 != 0;
-        return sumHasDecimals ? String.valueOf(sum) : String.valueOf((int) sum);
     }
+
 
     private void setSeparators(String input) {
         boolean hasCustomSeparators = input.matches("//(.|\n)*\n(.)*");
