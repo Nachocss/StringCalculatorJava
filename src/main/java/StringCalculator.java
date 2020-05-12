@@ -1,4 +1,3 @@
-import java.rmi.server.ExportException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,37 +51,7 @@ public class StringCalculator {
 
     private void performCommonOperations(String input) {
         setSeparators(input);
-        input = cleanInput(input);
-        setFactors(input);
-    }
-
-    private void setFactors(String input) {
-        errors.clear();
-        if(endsInSeparator(input)) {
-            errors.add(new ErrorInfo("Number expected but EOF found.", input.length()-1));
-        }
-        Optional<ErrorInfo> indexOfUnexpectedSeparator = findUnexpectedSeparator(input);
-        indexOfUnexpectedSeparator.ifPresent(error -> errors.add(error));
-
-        String regex = separators;
-        if (indexOfUnexpectedSeparator.isPresent()) {
-            regex += "|" + input.charAt(indexOfUnexpectedSeparator.get().getIndex());
-        }
-
-        Optional<ErrorInfo> numberWasExpected = wasNumberExpected(input,regex);
-        numberWasExpected.ifPresent(error -> errors.add(error));
-
-        Stream<String> stream = Arrays.stream(input.split(regex));
-        if (numberWasExpected.isPresent()) {
-            factors = stream.filter(n -> !n.equals("")).map(String::trim).mapToDouble(Double::parseDouble).toArray();
-        } else {
-            factors = stream.map(String::trim).mapToDouble(Double::parseDouble).toArray();
-        }
-
-        Optional<ErrorInfo> negativeNumbersFoundError = findNegativeNumbers(factors);
-        negativeNumbersFoundError.ifPresent(error -> errors.add(error));
-
-        if(!errors.isEmpty()) throw new CalculatorException(formatErrorOutput());
+        processInput(input);
     }
 
     private void setSeparators(String input) {
@@ -101,8 +70,37 @@ public class StringCalculator {
         return text;
     }
 
-    private boolean endsInSeparator(String input) {
-        return input.substring(input.length()-1).matches(separators);
+    private void processInput(String input) {
+        errors.clear();
+        input = cleanInput(input);
+
+        Optional<ErrorInfo> missingNumberError = endsInSeparator(input);
+        missingNumberError.ifPresent(error -> errors.add(error));
+
+        Optional<ErrorInfo> unexpectedSeparatorError = findUnexpectedSeparator(input);
+        unexpectedSeparatorError.ifPresent(error -> errors.add(error));
+
+        String regex = separators;
+        if (unexpectedSeparatorError.isPresent()) {
+            regex += "|" + input.charAt(unexpectedSeparatorError.get().getIndex());
+        }
+
+        Optional<ErrorInfo> numberExpectedError = wasNumberExpected(input,regex);
+        numberExpectedError.ifPresent(error -> errors.add(error));
+
+        setFactors(Arrays.stream(input.split(regex)), numberExpectedError.isPresent());
+
+        Optional<ErrorInfo> negativeNumbersError = findNegativeNumbers(factors);
+        negativeNumbersError.ifPresent(error -> errors.add(error));
+
+        if(!errors.isEmpty()) throw new CalculatorException(formatErrorOutput());
+    }
+
+    private Optional<ErrorInfo> endsInSeparator(String input) {
+        if(input.substring(input.length()-1).matches(separators)) {
+            return Optional.of(new ErrorInfo("Number expected but EOF found.", input.length() - 1));
+        }
+        return Optional.empty();
     }
 
     private Optional<ErrorInfo> findUnexpectedSeparator(String input) {
@@ -115,6 +113,27 @@ public class StringCalculator {
             return Optional.of(new ErrorInfo(message,index));
         }
         return Optional.empty();
+    }
+
+    private Optional<ErrorInfo> wasNumberExpected(String input, String regex) {
+        Stream<String> stream = Arrays.stream(input.split(regex));
+        if(stream.anyMatch(n -> n.equals(""))) {
+            Matcher matcher = Pattern.compile(separators+"{2}").matcher(input);
+            if(matcher.find()){
+                int index = (matcher.start()+1);
+                String numberWasExpected = "Number expected but '" + matcher.group().substring(1) + "' found at position " + index + ".";
+                return Optional.of(new ErrorInfo(numberWasExpected,index));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private void setFactors(Stream<String> stream, boolean numberExpectedErrorFound) {
+        if (numberExpectedErrorFound) {
+            factors = stream.filter(n -> !n.equals("")).map(String::trim).mapToDouble(Double::parseDouble).toArray();
+        } else {
+            factors = stream.map(String::trim).mapToDouble(Double::parseDouble).toArray();
+        }
     }
 
     private Optional<ErrorInfo> findNegativeNumbers(double[] inputNumbers) {
@@ -139,19 +158,6 @@ public class StringCalculator {
                 }
             }
             return Optional.of(new ErrorInfo(errorMessage.toString(),indexFirstConcurrence));
-        }
-        return Optional.empty();
-    }
-
-    private Optional<ErrorInfo> wasNumberExpected(String input, String regex) {
-        Stream<String> stream = Arrays.stream(input.split(regex));
-        if(stream.anyMatch(n -> n.equals(""))) {
-            Matcher matcher = Pattern.compile(separators+"{2}").matcher(input);
-            if(matcher.find()){
-                int index = (matcher.start()+1);
-                String numberWasExpected = "Number expected but '" + matcher.group().substring(1) + "' found at position " + index + ".";
-                return Optional.of(new ErrorInfo(numberWasExpected,index));
-            }
         }
         return Optional.empty();
     }

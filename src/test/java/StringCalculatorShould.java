@@ -32,14 +32,14 @@ public class StringCalculatorShould {
     public void return_its_sum_when_string_is_several_numbers() {
         assertThat(calculator.add("1,1")).isEqualTo("2");
         assertThat(calculator.add("1.2,1")).isEqualTo("2.2");
-        assertThat(calculator.add("1,1,3.3")).isEqualTo("5.3");
+        assertThat(calculator.add("1,1,3.3,3")).isEqualTo("8.3");
     }
 
     @Test
     public void allow_newlines_as_separator() {
-        assertThat(calculator.add("1\n1")).isEqualTo("2");
-        assertThat(calculator.add("1\n1,6")).isEqualTo("8");
-        assertThat(calculator.add("1\n1,6\n34\n1.1,1")).isEqualTo("44.1");
+        assertThat(calculator.add("1\n2,3")).isEqualTo("6");
+        exception = assertThrows(CalculatorException.class, () -> calculator.add("175.2,\n35"));
+        assertThat(exception.getMessage()).isEqualTo("Number expected but '\n' found at position 6.");
     }
 
     @Test
