@@ -1,42 +1,93 @@
-import java.util.Arrays;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
+import java.util.stream.Stream;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import static java.util.stream.Collectors.*;
+import static java.util.Map.Entry.*;
+import static java.util.Map.Entry.comparingByValue;
 
 public class StringCalculator {
 
     private String separators;
     private final String defaultSeparators = "[,\n]";
+    private Map<String,Integer> errors;
+    private double[] nums;
+
+    public StringCalculator() {
+        this.errors = new HashMap<>();
+    }
 
     public String add(String input) {
+        errors.clear();
         if (input.isEmpty()) {
             return "0";
         }
         setSeparators(input);
         input = cleanInput(input);
         if(endsInSeparator(input)) {
-            return "Number expected but EOF found.";
+            errors.put("Number expected but EOF found.", input.length()-1);
         }
-        Optional<Integer> indexOfUnexpectedSeparator = findUnexpectedSeparators(input);
+        Optional<Integer> indexOfUnexpectedSeparator = findUnexpectedSeparator(input);
         if (indexOfUnexpectedSeparator.isPresent()) {
-            return String.format("'%s' expected but '%s' found at position %d.",
-                    separators.replace("[","").replace("]",""),
+            errors.put(String.format("'%s' expected but '%s' found at position %d.",
+                    separators.replaceAll("[\\[\\]]",""),
                     input.charAt(indexOfUnexpectedSeparator.get()),
-                    indexOfUnexpectedSeparator.get());
+                    indexOfUnexpectedSeparator.get())
+                ,indexOfUnexpectedSeparator.get());
+        }
+        String regex = separators;
+        if (indexOfUnexpectedSeparator.isPresent()) {
+            regex += "|" + input.charAt(indexOfUnexpectedSeparator.get());
+        }
+        Optional<Object[]> numberWasExpected = wasNumberExpected(input,regex);
+        numberWasExpected.ifPresent(objects -> errors.put((String) objects[0], (int) objects[1]));
+
+
+        Stream<String> stream = Arrays.stream(input.split(regex));
+        if (numberWasExpected.isPresent()) {
+            nums = stream.filter(n -> !n.equals("")).map(String::trim).mapToDouble(Double::parseDouble).toArray();
+        } else {
+            nums = stream.map(String::trim).mapToDouble(Double::parseDouble).toArray();
         }
 
-        double[] nums = Arrays.stream(input.split(separators))
-                .map(String::trim).mapToDouble(Double::parseDouble).toArray();
+        Optional<Object[]> negativeNumbersFoundError = findNegativeNumbers(nums);
+        negativeNumbersFoundError.ifPresent(objects -> errors.put((String) objects[0], (int) objects[1]));
 
-        Optional<String> negativeNumbersFoundError = findNegativeNumbers(nums);
-        if (negativeNumbersFoundError.isPresent()) {
-            return negativeNumbersFoundError.get();
-        }
+        if (!errors.isEmpty()) return formatErrorOutput();
 
         double sum = DoubleStream.of(nums).sum();
         boolean sumHasDecimals = sum % 1 != 0;
         return sumHasDecimals ? String.valueOf(sum) : String.valueOf((int) sum);
+    }
+
+    private String formatErrorOutput() {
+        return errors.entrySet()
+                .stream()
+                .sorted(comparingByValue())
+                .map(Map.Entry::getKey)
+                .collect(Collectors.joining("\n"));
+    }
+
+    private Optional<Object[]> wasNumberExpected(String input, String regex) {
+        Stream<String> stream = Arrays.stream(input.split(regex));
+        if(stream.anyMatch(n -> n.equals(""))) {
+            Matcher matcher = Pattern.compile(separators+"{2}").matcher(input);
+            if(matcher.find()){
+                // I got the index already
+                int index = (matcher.start()+1);
+                String numberWasExpected = "Number expected but '" + matcher.group().substring(1) + "' found at position " + index + ".";
+                return Optional.of(new Object[]{numberWasExpected,index});
+            }
+        }
+        return Optional.empty();
     }
 
     private void setSeparators(String input) {
@@ -59,7 +110,7 @@ public class StringCalculator {
         return input.substring(input.length()-1).matches(separators);
     }
 
-    private Optional<Integer> findUnexpectedSeparators(String input) {
+    private Optional<Integer> findUnexpectedSeparator(String input) {
         Matcher matcher = Pattern.compile("[^[.]-0-9"+ separators + "]").matcher(input);
         if (matcher.find()) {
             int index = matcher.start();
@@ -68,8 +119,8 @@ public class StringCalculator {
         return Optional.empty();
     }
 
-    private Optional<String> findNegativeNumbers(double[] nums) {
-        double[] negativeNumbers = Arrays.stream(nums).filter(n -> n < 0).toArray();
+    private Optional<Object[]> findNegativeNumbers(double[] inputNumbers) {
+        double[] negativeNumbers = Arrays.stream(inputNumbers).filter(n -> n < 0).toArray();
 
         if (negativeNumbers.length > 0) {
             StringBuilder errorMessage = new StringBuilder("Negative not allowed : ");
@@ -80,7 +131,16 @@ public class StringCalculator {
                     errorMessage.append(", ");
                 }
             }
-            return Optional.of(errorMessage.toString());
+            int indexFirstConcurrence = -1;
+            for (int i = 0; i < inputNumbers.length; i++) {
+                for (double negativeNumber : negativeNumbers) {
+                    if (inputNumbers[i] == negativeNumber) {
+                        indexFirstConcurrence = i;
+                        break;
+                    }
+                }
+            }
+            return Optional.of(new Object[]{errorMessage.toString(),indexFirstConcurrence});
         }
         return Optional.empty();
     }

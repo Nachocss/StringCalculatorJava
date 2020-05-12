@@ -64,4 +64,9 @@ public class StringCalculatorShould {
         assertThat(calculator.add("2,-4,-5")).isEqualTo("Negative not allowed : -4, -5");
     }
 
+    @Test
+    public void show_several_errors() {
+       assertThat(calculator.add("-1,,2")).isEqualTo("Negative not allowed : -1\nNumber expected but ',' found at position 3.");
+       assertThat(calculator.add("-1\n,2")).isEqualTo("Negative not allowed : -1\nNumber expected but ',' found at position 3.");
+    }
 }
