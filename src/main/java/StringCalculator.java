@@ -21,8 +21,7 @@ public class StringCalculator {
         if (!errors.isEmpty()) return formatErrorOutput();
 
         double result = DoubleStream.of(factors).sum();
-        boolean resultHasDecimals = result % 1 != 0;
-        return resultHasDecimals ? String.valueOf(result) : String.valueOf((int) result);
+        return formatResult(result);
     }
 
     public String multiply(String input) {
@@ -31,8 +30,7 @@ public class StringCalculator {
         if (!errors.isEmpty()) return formatErrorOutput();
 
         double result = DoubleStream.of(factors).reduce(1, (a, b) -> a * b);
-        boolean resultHasDecimals = result % 1 != 0;
-        return resultHasDecimals ? String.valueOf(result) : String.valueOf((int) result);
+        return formatResult(result);
     }
 
     public String subtract(String input) {
@@ -41,11 +39,8 @@ public class StringCalculator {
         if (!errors.isEmpty()) return formatErrorOutput();
 
         double result = factors[0];
-        for (int i = 1; i < factors.length; i++) {
-            result -= factors[i];
-        }
-        boolean resultHasDecimals = result % 1 != 0;
-        return resultHasDecimals ? String.valueOf(result) : String.valueOf((int) result);
+        for (int i = 1; i < factors.length; i++) result -= factors[i];
+        return formatResult(result);
     }
 
     public String divide(String input) {
@@ -54,11 +49,8 @@ public class StringCalculator {
         if (!errors.isEmpty()) return formatErrorOutput();
 
         double result = factors[0];
-        for (int i = 1; i < factors.length; i++) {
-            result /= factors[i];
-        }
-        boolean productHasDecimals = result % 1 != 0;
-        return productHasDecimals ? String.valueOf(result) : String.valueOf((int) result);
+        for (int i = 1; i < factors.length; i++) result /= factors[i];
+        return formatResult(result);
     }
 
     private void performCommonOperations(String input) {
@@ -175,5 +167,9 @@ public class StringCalculator {
             if (iterator.hasNext()) errorOutput.append("\n");
         }
         return errorOutput.toString();
+    }
+
+    private String formatResult(double result) {
+        return result % 1 != 0 ? String.valueOf(result) : String.valueOf((int) result);
     }
 }

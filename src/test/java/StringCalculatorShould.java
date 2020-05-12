@@ -90,5 +90,6 @@ public class StringCalculatorShould {
     @Test
     public void support_subtractions() {
         assertThat(calculator.subtract("8,2")).isEqualTo("6");
+        assertThat(calculator.subtract("23,2.7")).isEqualTo("20.3");
     }
 }
