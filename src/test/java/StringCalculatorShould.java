@@ -1,14 +1,17 @@
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
 public class StringCalculatorShould {
 
-    StringCalculator calculator;
+    private StringCalculator calculator;
+    private CalculatorException exception;
 
     @Before
     public void setUp() {
@@ -39,48 +42,39 @@ public class StringCalculatorShould {
         assertThat(calculator.add("1\n1,6\n34\n1.1,1")).isEqualTo("44.1");
     }
 
-    @Test(expected = CalculatorException.class)
+    @Test
     public void not_allow_input_ending_in_separator() {
-        assertThat(calculator.add("1,1,")).isEqualTo("Number expected but EOF found.");
-        assertThat(calculator.add("1,1\n")).isEqualTo("Number expected but EOF found.");
-        assertThat(calculator.add("1\n1\n")).isEqualTo("Number expected but EOF found.");
-        assertThat(calculator.add("1\n1,")).isEqualTo("Number expected but EOF found.");
+        exception = assertThrows(CalculatorException.class, () -> calculator.add("1,3,"));
+        assertThat(exception.getMessage()).isEqualTo("Number expected but EOF found.");
     }
 
-    @Test(expected = CalculatorException.class)
+    @Test
     public void allow_custom_separators() {
         assertThat(calculator.add("//;\n1;2")).isEqualTo("3");
-        assertThat(calculator.add("//;\n1;2;")).isEqualTo("Number expected but EOF found.");
-        assertThat(calculator.add("//;\n2;3;4")).isEqualTo("9");
-        assertThat(calculator.add("//x\n2x3x4")).isEqualTo("9");
+        assertThat(calculator.add("//\\|\n1|2|3")).isEqualTo("6");
         assertThat(calculator.add("//sep\n2sep3")).isEqualTo("5");
-        assertThat(calculator.add("//\\|\n22|33|44")).isEqualTo("99");
-        assertThat(calculator.add("//\\|\n2|3.5")).isEqualTo("5.5");
-        assertThat(calculator.add("//\\|\n1|2,3")).isEqualTo("'\\|' expected but ',' found at position 3.");
-        assertThat(calculator.add("1,2;3")).isEqualTo("',\n' expected but ';' found at position 3.");
+        exception = assertThrows(CalculatorException.class, () -> calculator.add("//\\|\n1|2,3"));
+        assertThat(exception.getMessage()).isEqualTo("'\\|' expected but ',' found at position 3.");
     }
 
     @Test
     public void not_allow_negative_numbers() {
-        CalculatorException exception = assertThrows(CalculatorException.class, () -> calculator.add("-1,2"));
+        exception = assertThrows(CalculatorException.class, () -> calculator.add("-1,2"));
         assertThat(exception.getMessage()).isEqualTo("Negative not allowed : -1");
 
         exception = assertThrows(CalculatorException.class, () -> calculator.add("2,-4,-5"));
         assertThat(exception.getMessage()).isEqualTo("Negative not allowed : -4, -5");
     }
 
-    @Test(expected = CalculatorException.class)
+    @Test
     public void show_several_errors() {
-       assertThat(calculator.add("-1,,2")).isEqualTo("Negative not allowed : -1\nNumber expected but ',' found at position 3.");
-       assertThat(calculator.add("-1\n,2")).isEqualTo("Negative not allowed : -1\nNumber expected but ',' found at position 3.");
-       assertThat(calculator.add("1\n,2,-2")).isEqualTo("Number expected but ',' found at position 2.\nNegative not allowed : -2");
+        exception = assertThrows(CalculatorException.class, () -> calculator.add("-1,,2"));
+        assertThat(exception.getMessage()).isEqualTo("Negative not allowed : -1\nNumber expected but ',' found at position 3.");
     }
 
     @Test
     public void support_multiplications() {
         assertThat(calculator.multiply("2,2")).isEqualTo("4");
-        assertThat(calculator.multiply("2,4")).isEqualTo("8");
-        assertThat(calculator.multiply("2\n2")).isEqualTo("4");
         assertThat(calculator.multiply("//;\n10;2")).isEqualTo("20");
         assertThat(calculator.multiply("//;\n10.6;2")).isEqualTo("21.2");
     }
@@ -96,10 +90,5 @@ public class StringCalculatorShould {
     public void support_subtractions() {
         assertThat(calculator.subtract("8,2")).isEqualTo("6");
         assertThat(calculator.subtract("23,2.7")).isEqualTo("20.3");
-    }
-
-    @Test(expected = CalculatorException.class)
-    public void throw_StringCalculatorException() {
-        calculator.add("-1,2");
     }
 }

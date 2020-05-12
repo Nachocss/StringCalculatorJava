@@ -19,11 +19,6 @@ public class StringCalculator {
     public String add(String input) {
         if (input.isEmpty()) return "0";
         performCommonOperations(input);
-        for (ErrorInfo e : errors) {
-            throw new CalculatorException(e.getMessage());
-        }
-
-        if (!errors.isEmpty()) return formatErrorOutput();
 
         double result = DoubleStream.of(factors).sum();
         return formatResult(result);
@@ -32,7 +27,6 @@ public class StringCalculator {
     public String multiply(String input) {
         if (input.isEmpty()) return "0";
         performCommonOperations(input);
-        if (!errors.isEmpty()) return formatErrorOutput();
 
         double result = DoubleStream.of(factors).reduce(1, (a, b) -> a * b);
         return formatResult(result);
@@ -41,7 +35,6 @@ public class StringCalculator {
     public String subtract(String input) {
         if (input.isEmpty()) return "0";
         performCommonOperations(input);
-        if (!errors.isEmpty()) return formatErrorOutput();
 
         double result = factors[0];
         for (int i = 1; i < factors.length; i++) result -= factors[i];
@@ -51,7 +44,6 @@ public class StringCalculator {
     public String divide(String input) {
         if (input.isEmpty()) return "0";
         performCommonOperations(input);
-        if (!errors.isEmpty()) return formatErrorOutput();
 
         double result = factors[0];
         for (int i = 1; i < factors.length; i++) result /= factors[i];
@@ -89,6 +81,8 @@ public class StringCalculator {
 
         Optional<ErrorInfo> negativeNumbersFoundError = findNegativeNumbers(factors);
         negativeNumbersFoundError.ifPresent(error -> errors.add(error));
+
+        if(!errors.isEmpty()) throw new CalculatorException(formatErrorOutput());
     }
 
     private void setSeparators(String input) {
