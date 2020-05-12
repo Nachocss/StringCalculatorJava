@@ -3,6 +3,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.Assert.assertThrows;
 
 public class StringCalculatorShould {
 
@@ -37,7 +39,7 @@ public class StringCalculatorShould {
         assertThat(calculator.add("1\n1,6\n34\n1.1,1")).isEqualTo("44.1");
     }
 
-    @Test
+    @Test(expected = CalculatorException.class)
     public void not_allow_input_ending_in_separator() {
         assertThat(calculator.add("1,1,")).isEqualTo("Number expected but EOF found.");
         assertThat(calculator.add("1,1\n")).isEqualTo("Number expected but EOF found.");
@@ -45,7 +47,7 @@ public class StringCalculatorShould {
         assertThat(calculator.add("1\n1,")).isEqualTo("Number expected but EOF found.");
     }
 
-    @Test
+    @Test(expected = CalculatorException.class)
     public void allow_custom_separators() {
         assertThat(calculator.add("//;\n1;2")).isEqualTo("3");
         assertThat(calculator.add("//;\n1;2;")).isEqualTo("Number expected but EOF found.");
@@ -60,11 +62,14 @@ public class StringCalculatorShould {
 
     @Test
     public void not_allow_negative_numbers() {
-        assertThat(calculator.add("-1,2")).isEqualTo("Negative not allowed : -1");
-        assertThat(calculator.add("2,-4,-5")).isEqualTo("Negative not allowed : -4, -5");
+        CalculatorException exception = assertThrows(CalculatorException.class, () -> calculator.add("-1,2"));
+        assertThat(exception.getMessage()).isEqualTo("Negative not allowed : -1");
+
+        exception = assertThrows(CalculatorException.class, () -> calculator.add("2,-4,-5"));
+        assertThat(exception.getMessage()).isEqualTo("Negative not allowed : -4, -5");
     }
 
-    @Test
+    @Test(expected = CalculatorException.class)
     public void show_several_errors() {
        assertThat(calculator.add("-1,,2")).isEqualTo("Negative not allowed : -1\nNumber expected but ',' found at position 3.");
        assertThat(calculator.add("-1\n,2")).isEqualTo("Negative not allowed : -1\nNumber expected but ',' found at position 3.");
@@ -91,5 +96,10 @@ public class StringCalculatorShould {
     public void support_subtractions() {
         assertThat(calculator.subtract("8,2")).isEqualTo("6");
         assertThat(calculator.subtract("23,2.7")).isEqualTo("20.3");
+    }
+
+    @Test(expected = CalculatorException.class)
+    public void throw_StringCalculatorException() {
+        calculator.add("-1,2");
     }
 }

@@ -1,3 +1,4 @@
+import java.rmi.server.ExportException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,6 +19,10 @@ public class StringCalculator {
     public String add(String input) {
         if (input.isEmpty()) return "0";
         performCommonOperations(input);
+        for (ErrorInfo e : errors) {
+            throw new CalculatorException(e.getMessage());
+        }
+
         if (!errors.isEmpty()) return formatErrorOutput();
 
         double result = DoubleStream.of(factors).sum();
@@ -85,7 +90,6 @@ public class StringCalculator {
         Optional<ErrorInfo> negativeNumbersFoundError = findNegativeNumbers(factors);
         negativeNumbersFoundError.ifPresent(error -> errors.add(error));
     }
-
 
     private void setSeparators(String input) {
         boolean hasCustomSeparators = input.matches("//(.|\n)*\n(.)*");
