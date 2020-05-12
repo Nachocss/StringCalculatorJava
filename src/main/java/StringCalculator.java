@@ -1,28 +1,20 @@
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
-import static java.util.stream.Collectors.*;
-import static java.util.Map.Entry.*;
 import static java.util.Map.Entry.comparingByValue;
 
 public class StringCalculator {
 
     private String separators;
     private final String defaultSeparators = "[,\n]";
-    private Map<String,Integer> errors;
+    private List<ErrorInfo> errors;
     private double[] nums;
 
     public StringCalculator() {
-        this.errors = new HashMap<>();
+        this.errors = new ArrayList<>();
     }
 
     public String add(String input) {
@@ -33,23 +25,18 @@ public class StringCalculator {
         setSeparators(input);
         input = cleanInput(input);
         if(endsInSeparator(input)) {
-            errors.put("Number expected but EOF found.", input.length()-1);
+            errors.add(new ErrorInfo("Number expected but EOF found.", input.length()-1));
         }
-        Optional<Integer> indexOfUnexpectedSeparator = findUnexpectedSeparator(input);
-        if (indexOfUnexpectedSeparator.isPresent()) {
-            errors.put(String.format("'%s' expected but '%s' found at position %d.",
-                    separators.replaceAll("[\\[\\]]",""),
-                    input.charAt(indexOfUnexpectedSeparator.get()),
-                    indexOfUnexpectedSeparator.get())
-                ,indexOfUnexpectedSeparator.get());
-        }
+        Optional<ErrorInfo> indexOfUnexpectedSeparator = findUnexpectedSeparator(input);
+        indexOfUnexpectedSeparator.ifPresent(error -> errors.add(error));
+
         String regex = separators;
         if (indexOfUnexpectedSeparator.isPresent()) {
-            regex += "|" + input.charAt(indexOfUnexpectedSeparator.get());
+            regex += "|" + input.charAt(indexOfUnexpectedSeparator.get().getIndex());
         }
-        Optional<Object[]> numberWasExpected = wasNumberExpected(input,regex);
-        numberWasExpected.ifPresent(objects -> errors.put((String) objects[0], (int) objects[1]));
 
+        Optional<ErrorInfo> numberWasExpected = wasNumberExpected(input,regex);
+        numberWasExpected.ifPresent(error -> errors.add(error));
 
         Stream<String> stream = Arrays.stream(input.split(regex));
         if (numberWasExpected.isPresent()) {
@@ -58,36 +45,14 @@ public class StringCalculator {
             nums = stream.map(String::trim).mapToDouble(Double::parseDouble).toArray();
         }
 
-        Optional<Object[]> negativeNumbersFoundError = findNegativeNumbers(nums);
-        negativeNumbersFoundError.ifPresent(objects -> errors.put((String) objects[0], (int) objects[1]));
+        Optional<ErrorInfo> negativeNumbersFoundError = findNegativeNumbers(nums);
+        negativeNumbersFoundError.ifPresent(error -> errors.add(error));
 
         if (!errors.isEmpty()) return formatErrorOutput();
 
         double sum = DoubleStream.of(nums).sum();
         boolean sumHasDecimals = sum % 1 != 0;
         return sumHasDecimals ? String.valueOf(sum) : String.valueOf((int) sum);
-    }
-
-    private String formatErrorOutput() {
-        return errors.entrySet()
-                .stream()
-                .sorted(comparingByValue())
-                .map(Map.Entry::getKey)
-                .collect(Collectors.joining("\n"));
-    }
-
-    private Optional<Object[]> wasNumberExpected(String input, String regex) {
-        Stream<String> stream = Arrays.stream(input.split(regex));
-        if(stream.anyMatch(n -> n.equals(""))) {
-            Matcher matcher = Pattern.compile(separators+"{2}").matcher(input);
-            if(matcher.find()){
-                // I got the index already
-                int index = (matcher.start()+1);
-                String numberWasExpected = "Number expected but '" + matcher.group().substring(1) + "' found at position " + index + ".";
-                return Optional.of(new Object[]{numberWasExpected,index});
-            }
-        }
-        return Optional.empty();
     }
 
     private void setSeparators(String input) {
@@ -110,16 +75,19 @@ public class StringCalculator {
         return input.substring(input.length()-1).matches(separators);
     }
 
-    private Optional<Integer> findUnexpectedSeparator(String input) {
+    private Optional<ErrorInfo> findUnexpectedSeparator(String input) {
         Matcher matcher = Pattern.compile("[^[.]-0-9"+ separators + "]").matcher(input);
         if (matcher.find()) {
             int index = matcher.start();
-            return Optional.of(index);
+            String message = String.format("'%s' expected but '%s' found at position %d.",
+                    separators.replaceAll("[\\[\\]]",""),
+                    input.charAt(index),index);
+            return Optional.of(new ErrorInfo(message,index));
         }
         return Optional.empty();
     }
 
-    private Optional<Object[]> findNegativeNumbers(double[] inputNumbers) {
+    private Optional<ErrorInfo> findNegativeNumbers(double[] inputNumbers) {
         double[] negativeNumbers = Arrays.stream(inputNumbers).filter(n -> n < 0).toArray();
 
         if (negativeNumbers.length > 0) {
@@ -140,8 +108,32 @@ public class StringCalculator {
                     }
                 }
             }
-            return Optional.of(new Object[]{errorMessage.toString(),indexFirstConcurrence});
+            return Optional.of(new ErrorInfo(errorMessage.toString(),indexFirstConcurrence));
         }
         return Optional.empty();
+    }
+
+    private Optional<ErrorInfo> wasNumberExpected(String input, String regex) {
+        Stream<String> stream = Arrays.stream(input.split(regex));
+        if(stream.anyMatch(n -> n.equals(""))) {
+            Matcher matcher = Pattern.compile(separators+"{2}").matcher(input);
+            if(matcher.find()){
+                int index = (matcher.start()+1);
+                String numberWasExpected = "Number expected but '" + matcher.group().substring(1) + "' found at position " + index + ".";
+                return Optional.of(new ErrorInfo(numberWasExpected,index));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private String formatErrorOutput() {
+        errors.sort(Comparator.comparingInt(ErrorInfo::getIndex));
+        StringBuilder errorOutput = new StringBuilder();
+        Iterator<ErrorInfo> iterator = errors.iterator();
+        while (iterator.hasNext()) {
+            errorOutput.append((iterator.next()).getMessage());
+            if (iterator.hasNext()) errorOutput.append("\n");
+        }
+        return errorOutput.toString();
     }
 }
